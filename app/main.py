@@ -1,7 +1,7 @@
 from fastapi import FastAPI, status, HTTPException, Depends
 from fastapi.params import Body
 from pydantic import BaseModel
-from typing import Optional
+from typing import Optional, List
 from random import randrange
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -15,16 +15,6 @@ models.Base.metadata.create_all(bind=engine)
 app = FastAPI()
 
 
-
-# Creating a class for "post" using pydantic model for data validation
-'''
-pydantic models are scheme models which is used for data validation and never interacts with the database
-
-'''
-class Post(BaseModel):
-    title: str
-    content: str
-    published: bool = True
 
 
 # Connecting python to Postgresql database using psycopg2 library. 
@@ -82,14 +72,19 @@ async def root():
 
 
 
+
+
+
+
 # 1) "posts" end point and get method to get post with psycopg2
 
-@app.get("/posts")
+@app.get("/posts", response_model=List[schemas.Post])
 async def get_post(db: Session = Depends(get_db)):
     posts = db.query(models.Post).all()
 #    cursor.execute(""" SELECT * FROM posts """)
 #    posts = cursor.fetchall()
     return posts
+
 
 # From psycopg2
 @app.get("/posts-from-psycopg2")
@@ -130,6 +125,10 @@ async def get_post(Session = Depends(get_db)):
 
     '''
     return get_posts_from_orm
+
+
+
+
 
 
 
@@ -193,8 +192,14 @@ def create_posts(post: schemas.PostCreate, db:Session = Depends(get_db)):
     return new_post
     
 
+
+
+
+
+
+
 # Get post through it's ID. 
-@app.get("/posts/{id}")
+@app.get("/posts/{id}", response_model=schemas.Post)
 def get_post(id: int, db: Session = Depends(get_db)):
     #cursor.execute("""SELECT * FROM posts WHERE id = %s """,(id,))
     #test_post = cursor.fetchone()
@@ -221,17 +226,6 @@ def get_post(id: int):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"post with id {id} not found")
     return test_post
 
-@app.get("/posts/{id}")
-def get_post(id: int, db: Session = Depends(get_db)):
-    #cursor.execute("""SELECT * FROM posts WHERE id = %s """,(id,))
-    #test_post = cursor.fetchone()
-    test_post = db.query(models.Post).filter(models.Post.id == id).first()
-    print(test_post)
-
-    if not test_post:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"post with {id} not found")     
-    return test_post
-
 # From orm
 @app.get("/get-post-by-id-from-orm/{id}")
 def get_post(id: int, db: Session = Depends(get_db)):
@@ -240,6 +234,11 @@ def get_post(id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail= f"post with {id} does not exists")
     return test_post
     
+
+
+
+
+
 
 
 # Delete post using it's ID.
@@ -283,8 +282,14 @@ def delete_post(id: int, db: Session = Depends(get_db)):
     return {"message": "post was deleted succesfully"}
     
 
+
+
+
+
+
+
 # Update post using its ID. 
-@app.put("/posts/{id}")
+@app.put("/posts/{id}", response_model=schemas.Post)
 def update_post(id: int, updated_post: schemas.PostCreate, db: Session = Depends(get_db)):
     #cursor.execute("""UPDATE posts SET title = %s, content = %s, published= %s WHERE id = %s RETURNING *""", ##(post.title, post.content, post.publish, (id,)))
     #updated_post = cursor.fetchone()
@@ -309,24 +314,6 @@ def update_post(id: int, updated_post: schemas.PostCreate):
     conn.commit()
     return updated_post
 
-@app.put("/posts/{id}")
-def update_post(id: int, updated_post: schemas.PostCreate, db: Session = Depends(get_db)):
-    #cursor.execute("""UPDATE posts SET title = %s, content = %s, published= %s WHERE id = %s RETURNING *""", ##(post.title, post.content, post.publish, (id,)))
-    #updated_post = cursor.fetchone()
-
-    post_query = db.query(models.Post).filter(models.Post.id == id)
-
-    post = post_query.first()
-
-    if post == None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=f"post with id: {id} does not exists")
-
-    post_query.update(updated_post.dict(), synchronize_session=False)
-    # conn.commit()
-    db.commit()
-    return post_query.first()
-
-
 # from orm
 @app.put("/update-post-by-orm/{id}")
 def updated_post(id: int, updat_post: schemas.PostCreate, db: Session = Depends(get_db)):
@@ -338,3 +325,13 @@ def updated_post(id: int, updat_post: schemas.PostCreate, db: Session = Depends(
     u_post.update(updat_post.dict(), synchronize_session=False)
     db.commit()
     return u_post.first()
+
+
+@app.post("/users", status_code=status.HTTP_201_CREATED)
+def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    new_user = models.User(**user.dict())
+    db.add(new_user)
+    db.commit()
+    db.refresh(new_user)
+
+    return new_user
