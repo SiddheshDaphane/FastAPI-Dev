@@ -9,10 +9,37 @@ import app.models as models
 import app.schemas as schemas
 from app.database import engine, get_db
 from sqlalchemy.orm import Session
+from app import utils
+
+
+
+
+
 
 models.Base.metadata.create_all(bind=engine)
 
-app = FastAPI()
+"""
+This line tells SQLAlchemy to create all the database tables that are defined in your models (the ones that inherit from Base), if they don't already exist.
+
+`models.Base`: This is your declarative base — the foundation that all your SQLAlchemy model classes inherit from. (from database.py)
+
+`.metadata`: This stores all the schema information (i.e., table definitions, column types, constraints, etc.) for the models.
+
+`.create_all(bind=engine)`:
+
+It uses the engine (your connection to the DB) to connect.
+
+It goes through all the model classes you've defined.
+
+It checks if the corresponding table exists in the DB.
+
+If not, it creates it.
+
+If it already exists, it does nothing (it won't drop or alter it).
+
+"""
+
+app = FastAPI() # It creates an instance of the FastAPI application.
 
 
 
@@ -20,6 +47,16 @@ app = FastAPI()
 # Connecting python to Postgresql database using psycopg2 library. 
 try:
     conn = psycopg2.connect(host='localhost', database='fastapi', user='postgres', password='Linkinpark@123', cursor_factory=RealDictCursor)
+    """ Normally, when you fetch data using a cursor in psycopg2, you get a tuple, like this: ('Post Title', 'Some content', True)
+    But when you use RealDictCursor, you get a dictionary, like this:
+    {
+    'title': 'Post Title',
+    'content': 'Some content',
+    'published': True
+    }
+    This means each row is returned as a Python dictionary where the keys are column names — super useful for APIs and JSON responses.
+
+       """
     cursor = conn.cursor()
     print("Database connection was successful")
 except Exception as error:
@@ -59,8 +96,18 @@ def find_post(id):
 
 
 # Finding index of the post which is different from "id"
+""" for i, p in enumerate(my_posts):
+enumerate() gives you both:
+i: the current index (0, 1, 2, ...)
+p: the actual post (a dictionary like {'id': 1, 'title': 'Hello'})
+if p['id'] == id:
+Checks whether the id field in the current post matches the id passed to the function.
+return i
+If a match is found, it returns the index (not the post itself).
+If no match is found, the function returns None by default.
+ """
 def find_index_post(id):
-    for i, p in enumerate(my_posts):
+    for i, p in enumerate(my_posts): 
         if p['id'] == id:
             return i
         
@@ -76,7 +123,7 @@ async def root():
 
 
 
-# 1) "posts" end point and get method to get post with psycopg2
+# 1) "posts" end point and get method to get post with SQLAlchemy ORM
 
 @app.get("/posts", response_model=List[schemas.Post])
 async def get_post(db: Session = Depends(get_db)):
@@ -329,6 +376,10 @@ def updated_post(id: int, updat_post: schemas.PostCreate, db: Session = Depends(
 
 @app.post("/users", status_code=status.HTTP_201_CREATED, response_model=schemas.UserOut)
 def create_user(user: schemas.UserCreate, db: Session = Depends(get_db)):
+    
+    # Hasing the password
+    hashed_password = utils.hash(user.password)
+    user.password = hashed_password
     new_user = models.User(**user.dict())
     db.add(new_user)
     db.commit()
