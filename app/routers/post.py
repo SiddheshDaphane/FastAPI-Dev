@@ -6,7 +6,10 @@ from typing import  List
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
-router = APIRouter()
+router = APIRouter(
+    prefix="/posts",
+    tags= ['posts']
+)
 
 # Connecting python to Postgresql database using psycopg2 library. 
 try:
@@ -30,7 +33,7 @@ except Exception as error:
 
 # 1) "posts" end point and get method to get post with SQLAlchemy ORM
 
-@router.get("/posts", response_model=List[schemas.Post])
+@router.get("/", response_model=List[schemas.Post])
 async def get_post(db: Session = Depends(get_db)):
     posts = db.query(models.Post).all()
 #    cursor.execute(""" SELECT * FROM posts """)
@@ -85,7 +88,7 @@ async def get_post(Session = Depends(get_db)):
 
 
 # Creating a post using "post" method and also adding HTTP status.
-@router.post("/posts", status_code=status.HTTP_201_CREATED, response_model=schemas.Post)
+@router.post("/", status_code=status.HTTP_201_CREATED, response_model=schemas.Post)
 def create_posts(post: schemas.PostCreate, db: Session = Depends(get_db)):
     #cursor.execute(""" INSERT INTO posts (title, content, published) VALUES (%s, %s, %s) RETURNING * """, (post.#title, post.content, post.publish))
     #new_post = cursor.fetchone()
@@ -151,7 +154,7 @@ def create_posts(post: schemas.PostCreate, db:Session = Depends(get_db)):
 
 
 # Get post through it's ID. 
-@router.get("/posts/{id}", response_model=schemas.Post)
+@router.get("/{id}", response_model=schemas.Post)
 def get_post(id: int, db: Session = Depends(get_db)):
     #cursor.execute("""SELECT * FROM posts WHERE id = %s """,(id,))
     #test_post = cursor.fetchone()
@@ -194,7 +197,7 @@ def get_post(id: int, db: Session = Depends(get_db)):
 
 
 # Delete post using it's ID.
-@router.delete("/posts/{id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_post(id: int, db: Session = Depends(get_db)):
    
     # cursor.execute("""DELETE FROM posts WHERE id = %s RETURNING *""", (id,))
@@ -241,7 +244,7 @@ def delete_post(id: int, db: Session = Depends(get_db)):
 
 
 # Update post using its ID. 
-@router.put("/posts/{id}", response_model=schemas.Post)
+@router.put("/{id}", response_model=schemas.Post)
 def update_post(id: int, updated_post: schemas.PostCreate, db: Session = Depends(get_db)):
     #cursor.execute("""UPDATE posts SET title = %s, content = %s, published= %s WHERE id = %s RETURNING *""", ##(post.title, post.content, post.publish, (id,)))
     #updated_post = cursor.fetchone()
